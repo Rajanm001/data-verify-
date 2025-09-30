@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GetGSA: AI + RAG System</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%, #f093fb 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(180deg); }
+        }
+
+        .header h1 {
+            margin-bottom: 15px;
+            font-size: 3em;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1::after {
+            content: '🚀';
+            margin-left: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+            font-weight: 300;
+        }
+
+        .enterprise-badge {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+        }
+
+        .panel h2 {
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+
+        .input-section {
+            margin-bottom: 20px;
+        }
+
+        .sample-selector {
+            margin-bottom: 15px;
+        }
+
+        .sample-selector select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .input-area {
+            width: 100%;
+            min-height: 300px;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+
+        .input-area:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .status {
+            margin: 15px 0;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .status.success {
+            background: linear-gradient(135deg, #f0fff4 0%, #e6fffa 100%);
+            border: 1px solid #9ae6b4;
+            color: #276749;
+        }
+
+        .status.success::before {
+            content: '✅';
+            margin-right: 8px;
+        }
+
+        .status.error {
+            background: linear-gradient(135deg, #fed7d7 0%, #fbb6ce 100%);
+            border: 1px solid #feb2b2;
+            color: #c53030;
+        }
+
+        .status.error::before {
+            content: '❌';
+            margin-right: 8px;
+        }
+
+        .status.loading {
+            background: linear-gradient(135deg, #ebf8ff 0%, #e6fffa 100%);
+            border: 1px solid #90cdf4;
+            color: #2a69ac;
+        }
+
+        .status.loading::before {
+            content: '⚡';
+            margin-right: 8px;
+        }
+
+        .ai-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 8px;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .ai-indicator.openai { background: rgba(16, 163, 127, 0.1); border-color: rgba(16, 163, 127, 0.3); color: #10a37f; }
+        .ai-indicator.groq { background: rgba(255, 107, 0, 0.1); border-color: rgba(255, 107, 0, 0.3); color: #ff6b00; }
+        .ai-indicator.template { background: rgba(107, 114, 126, 0.1); border-color: rgba(107, 114, 126, 0.3); color: #6b727e; }
+
+        .results-section {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .result-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-item h3 {
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .checklist-item {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 5px;
+            border-left: 4px solid #e2e8f0;
+        }
+
+        .checklist-item.ok {
+            background: #f0fff4;
+            border-left-color: #48bb78;
+        }
+
+        .checklist-item.problem {
+            background: #fed7d7;
+            border-left-color: #f56565;
+        }
+
+        .checklist-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .checklist-problems {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .rule-citation {
+            font-size: 0.8em;
+            color: #7c3aed;
+            font-weight: 500;
+        }
+
+        .email-preview, .brief-preview {
+            background: #f8f9fa;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .metric-card {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+        
+        .system-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 0.8em;
+            z-index: 1000;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .system-status {
+                position: relative;
+                bottom: auto;
+                right: auto;
+                margin-top: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="enterprise-badge">Enterprise v2.0</div>
+            <h1>GetGSA: AI + RAG System</h1>
+            <p>Enterprise-grade GSA document processing with multi-AI providers, advanced caching & real-time analytics</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Input Panel -->
+            <div class="panel">
+                <h2>📄 Document Input</h2>
+                
+                <div class="input-section">
+                    <div class="sample-selector">
+                        <label for="sampleSelect">Load Sample Documents:</label>
+                        <select id="sampleSelect">
+                            <option value="">Choose a sample...</option>
+                            <option value="company_profile">Company Profile (Complete)</option>
+                            <option value="company_profile_incomplete">Company Profile (Missing UEI)</option>
+                            <option value="past_performance_good">Past Performance (>$25k)</option>
+                            <option value="past_performance_bad">Past Performance (<$25k)</option>
+                            <option value="pricing_complete">Pricing Sheet (Complete)</option>
+                            <option value="pricing_incomplete">Pricing Sheet (Incomplete)</option>
+                            <option value="all_documents">All Sample Documents</option>
+                        </select>
+                    </div>
+
+                    <textarea id="documentInput" class="input-area" 
+                              placeholder="Paste your GSA documents here, or select a sample above.
+
+Example format:
+Company Profile (A):
+Acme Robotics LLC
+UEI: ABC123DEF456
+DUNS: 123456789
+...
+
+Past Performance (PP-1):
+Customer: City of Palo Verde
+Contract: Website modernization
+Value: $18,000
+..."></textarea>
+                </div>
+
+                <div class="button-group">
+                    <button id="ingestBtn" class="btn btn-primary">📥 Ingest Documents</button>
+                    <button id="analyzeBtn" class="btn btn-primary" disabled>🔍 Analyze</button>
+                    <button id="clearBtn" class="btn btn-secondary">🗑️ Clear</button>
+                </div>
+
+                <div id="status" class="status hidden"></div>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="panel">
+                <h2>📊 Analysis Results</h2>
+                <div id="resultsContainer" class="results-section">
+                    <p style="color: #666; font-style: italic; text-align: center; margin-top: 50px;">
+                        Upload and analyze documents to see results here.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="system-status" id="systemStatus">
+        <div class="pulse">🟢</div>
+        <span>System: <strong>Online</strong> | AI: <strong>Multi-Provider</strong></span>
+    </div>
+
+    <script>
+        // Sample documents
+        const sampleDocuments = {
+            company_profile: `🏢 Company Profile (A) - Premium Vendor:
+Acme Robotics LLC
+UEI: ABC123DEF456
+DUNS: 123456789
+NAICS: 541511, 541512
+POC: Jane Smith, jane@acme.co, (415) 555-0100
+Address: 444 West Lake Street, Suite 1700, Chicago, IL 60606
+SAM.gov: registered
+Capabilities: AI/ML, Cloud Solutions, Cybersecurity`,
+
+            company_profile_incomplete: `Company Profile (B):
+Beta Systems Inc.
+DUNS: 987654321
+NAICS: 541611
+POC: Bob Wilson, bob@beta.com, (312) 555-0200
+Address: 100 North Michigan Avenue, Chicago, IL 60601
+SAM.gov: registered`,
+
+            past_performance_good: `Past Performance (PP-2):
+Customer: State of Fremont
+Contract: Data migration & support
+Value: $82,500
+Period: 10/2022 - 02/2024
+Contact: sarah.lee@fremont.gov`,
+
+            past_performance_bad: `Past Performance (PP-1):
+Customer: City of Palo Verde
+Contract: Website modernization
+Value: $18,000
+Period: 07/2023 - 03/2024
+Contact: John Roe, cio@pverde.gov`,
+
+            pricing_complete: `Pricing Sheet (text; simplified):
+Labor Category, Rate, Unit
+Senior Developer, 185, Hour
+Project Manager, 165, Hour
+Business Analyst, 145, Hour`,
+
+            pricing_incomplete: `Pricing Sheet (incomplete):
+Labor Category, Rate
+Senior Developer, 185
+Project Manager, 165
+Business Analyst`,
+
+            all_documents: `Company Profile (A):
+Acme Robotics LLC
+UEI: ABC123DEF456
+DUNS: 123456789
+NAICS: 541511, 541512
+POC: Jane Smith, jane@acme.co, (415) 555-0100
+Address: 444 West Lake Street, Suite 1700, Chicago, IL 60606
+SAM.gov: registered
+
+Past Performance (PP-1):
+Customer: City of Palo Verde
+Contract: Website modernization
+Value: $18,000
+Period: 07/2023 - 03/2024
+Contact: John Roe, cio@pverde.gov
+
+Past Performance (PP-2):
+Customer: State of Fremont
+Contract: Data migration & support
+Value: $82,500
+Period: 10/2022 - 02/2024
+Contact: sarah.lee@fremont.gov
+
+Pricing Sheet (text; simplified):
+Labor Category, Rate, Unit
+Senior Developer, 185, Hour
+Project Manager, 165, Hour`
+        };
+
+        // DOM elements
+        const sampleSelect = document.getElementById('sampleSelect');
+        const documentInput = document.getElementById('documentInput');
+        const ingestBtn = document.getElementById('ingestBtn');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const status = document.getElementById('status');
+        const resultsContainer = document.getElementById('resultsContainer');
+
+        let currentRequestId = null;
+
+        // Event listeners
+        sampleSelect.addEventListener('change', loadSample);
+        ingestBtn.addEventListener('click', ingestDocuments);
+        analyzeBtn.addEventListener('click', analyzeDocuments);
+        clearBtn.addEventListener('click', clearAll);
+
+        function loadSample() {
+            const selectedSample = sampleSelect.value;
+            if (selectedSample && sampleDocuments[selectedSample]) {
+                documentInput.value = sampleDocuments[selectedSample];
+            }
+        }
+
+        function showStatus(message, type = 'loading') {
+            status.className = `status ${type}`;
+            status.innerHTML = type === 'loading' ? `<span class="spinner"></span>${message}` : message;
+            status.classList.remove('hidden');
+        }
+
+        function hideStatus() {
+            status.classList.add('hidden');
+        }
+
+        async function ingestDocuments() {
+            const text = documentInput.value.trim();
+            if (!text) {
+                showStatus('Please enter document text first.', 'error');
+                return;
+            }
+
+            showStatus('Ingesting documents...');
+            ingestBtn.disabled = true;
+
+            try {
+                // Parse documents (simple parsing for demo)
+                const documents = parseDocuments(text);
+                
+                const response = await fetch('/ingest', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ documents })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                currentRequestId = result.request_id;
+                
+                showStatus(`Successfully ingested ${result.doc_summaries.length} documents. Ready to analyze.`, 'success');
+                analyzeBtn.disabled = false;
+                
+                // Show ingestion results
+                displayIngestionResults(result);
+
+            } catch (error) {
+                showStatus(`Ingestion failed: ${error.message}`, 'error');
+                console.error('Ingestion error:', error);
+            } finally {
+                ingestBtn.disabled = false;
+            }
+        }
+
+        async function analyzeDocuments() {
+            if (!currentRequestId) {
+                showStatus('Please ingest documents first.', 'error');
+                return;
+            }
+
+            showStatus('Analyzing documents with AI and RAG...');
+            analyzeBtn.disabled = true;
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                showStatus('Analysis complete!', 'success');
+                displayAnalysisResults(result);
+                
+                // Show enterprise metrics if available
+                if (result.enterprise_metadata) {
+                    displayEnterpriseMetrics(result.enterprise_metadata);
+                }
+
+            } catch (error) {
+                showStatus(`Analysis failed: ${error.message}`, 'error');
+                console.error('Analysis error:', error);
+            } finally {
+                analyzeBtn.disabled = false;
+            }
+        }
+        
+        function displayEnterpriseMetrics(metadata) {
+            const metricsHtml = `
+                <div class="result-item" style="background: linear-gradient(135deg, #f8f9ff 0%, #e6f3ff 100%); border-left: 4px solid #667eea;">
+                    <h3>🚀 Enterprise Performance Metrics</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+                        <div class="metric-card">
+                            <strong>AI Providers Used:</strong><br>
+                            <span class="ai-indicator ${metadata.brief_generation.provider.replace('-', ' ')}">Brief: ${metadata.brief_generation.provider}</span>
+                            <span class="ai-indicator ${metadata.email_generation.provider.replace('-', ' ')}">Email: ${metadata.email_generation.provider}</span>
+                        </div>
+                        <div class="metric-card">
+                            <strong>Processing Time:</strong><br>
+                            <span style="color: #667eea; font-weight: 600;">${metadata.processing_time.toFixed(2)}s</span>
+                        </div>
+                        <div class="metric-card">
+                            <strong>Quality Scores:</strong><br>
+                            Brief: <span style="color: #10a37f; font-weight: 600;">${metadata.quality_scores.brief.toFixed(1)}/10</span><br>
+                            Email: <span style="color: #10a37f; font-weight: 600;">${metadata.quality_scores.email.toFixed(1)}/10</span>
+                        </div>
+                        <div class="metric-card">
+                            <strong>Cache Status:</strong><br>
+                            <span style="color: ${metadata.brief_generation.cache_hit ? '#10a37f' : '#ff6b00'}; font-weight: 600;">
+                                ${metadata.brief_generation.cache_hit ? '✅ Cache Hit' : '🔄 Fresh Generation'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            resultsContainer.insertAdjacentHTML('afterbegin', metricsHtml);
+        }
+
+        function parseDocuments(text) {
+            // Simple document parsing logic
+            const documents = [];
+            const sections = text.split(/\n\s*\n/);
+            
+            for (const section of sections) {
+                const trimmed = section.trim();
+                if (!trimmed) continue;
+                
+                let type_hint = null;
+                let name = 'Document';
+                
+                // Determine type based on content
+                const firstLine = trimmed.split('\n')[0].toLowerCase();
+                if (firstLine.includes('company') || firstLine.includes('profile')) {
+                    type_hint = 'company_profile';
+                    name = 'Company Profile';
+                } else if (firstLine.includes('past') || firstLine.includes('performance')) {
+                    type_hint = 'past_performance';
+                    name = firstLine.includes('pp-1') ? 'Past Performance PP-1' : 'Past Performance PP-2';
+                } else if (firstLine.includes('pricing') || firstLine.includes('labor')) {
+                    type_hint = 'pricing';
+                    name = 'Pricing Sheet';
+                }
+                
+                documents.push({
+                    name: name,
+                    text: trimmed,
+                    type_hint: type_hint
+                });
+            }
+            
+            return documents;
+        }
+
+        function displayIngestionResults(result) {
+            let html = '<div class="result-item">';
+            html += '<h3>📥 Ingestion Results</h3>';
+            html += `<p><strong>Request ID:</strong> ${result.request_id}</p>`;
+            html += `<p><strong>Documents Processed:</strong> ${result.doc_summaries.length}</p>`;
+            
+            for (const doc of result.doc_summaries) {
+                html += `<div style="margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 3px;">`;
+                html += `<strong>${doc.name}</strong> (${doc.type_hint || 'unknown type'})<br>`;
+                html += `Characters: ${doc.character_count} → ${doc.redacted_character_count} `;
+                html += `(${doc.pii_items_redacted} PII items redacted)`;
+                html += `</div>`;
+            }
+            
+            html += '</div>';
+            resultsContainer.innerHTML = html;
+        }
+
+        function displayAnalysisResults(result) {
+            let html = '';
+            
+            // Classifications
+            if (result.parsed.classifications) {
+                html += '<div class="result-item">';
+                html += '<h3>🤖 AI Classification Results</h3>';
+                for (const classification of result.parsed.classifications) {
+                    const confidence = (classification.confidence * 100).toFixed(1);
+                    html += `<div style="margin: 8px 0;">`;
+                    html += `<strong>${classification.document_name}:</strong> `;
+                    html += `${classification.predicted_type} (${confidence}% confidence)`;
+                    if (classification.abstained) {
+                        html += ` <span style="color: #f56565;">⚠️ ${classification.reason}</span>`;
+                    }
+                    html += `</div>`;
+                }
+                html += '</div>';
+            }
+
+            // Checklist
+            if (result.checklist) {
+                html += '<div class="result-item">';
+                html += '<h3>✅ Policy Compliance Checklist</h3>';
+                
+                for (const item of result.checklist) {
+                    const cssClass = item.required_ok ? 'ok' : 'problem';
+                    const icon = item.required_ok ? '✅' : '❌';
+                    
+                    html += `<div class="checklist-item ${cssClass}">`;
+                    html += `<div class="checklist-title">${icon} ${item.description}</div>`;
+                    html += `<div class="rule-citation">GSA Rule ${item.rule_id}</div>`;
+                    
+                    if (item.problems.length > 0) {
+                        html += `<div class="checklist-problems">Issues: ${item.problems.join(', ')}</div>`;
+                    }
+                    
+                    if (item.evidence.length > 0) {
+                        html += `<div class="checklist-problems">Evidence: ${item.evidence.join('; ')}</div>`;
+                    }
+                    
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+
+            // Negotiation Brief
+            if (result.brief) {
+                html += '<div class="result-item">';
+                html += '<h3>📋 Negotiation Prep Brief</h3>';
+                html += `<div class="brief-preview">${result.brief}</div>`;
+                html += '</div>';
+            }
+
+            // Client Email
+            if (result.client_email) {
+                html += '<div class="result-item">';
+                html += '<h3>📧 Client Email Draft</h3>';
+                html += `<div class="email-preview">${result.client_email}</div>`;
+                html += '</div>';
+            }
+
+            // Citations
+            if (result.citations && result.citations.length > 0) {
+                html += '<div class="result-item">';
+                html += '<h3>📚 Rule Citations Used</h3>';
+                for (const citation of result.citations) {
+                    html += `<div style="margin: 8px 0; font-size: 0.9em;">`;
+                    html += `<strong>${citation.rule_id}:</strong> ${citation.chunk}`;
+                    html += ` <em>(relevance: ${(citation.relevance_score * 100).toFixed(1)}%)</em>`;
+                    html += `</div>`;
+                }
+                html += '</div>';
+            }
+
+            resultsContainer.innerHTML = html;
+        }
+
+        function clearAll() {
+            documentInput.value = '';
+            sampleSelect.value = '';
+            currentRequestId = null;
+            analyzeBtn.disabled = true;
+            hideStatus();
+            resultsContainer.innerHTML = `
+                <p style="color: #666; font-style: italic; text-align: center; margin-top: 50px;">
+                    Upload and analyze documents to see results here.
+                </p>
+            `;
+        }
+
+        // Initialize with system monitoring
+        window.addEventListener('load', () => {
+            console.log('🚀 GetGSA Enterprise UI loaded successfully');
+            checkSystemHealth();
+            setInterval(checkSystemHealth, 30000); // Check every 30 seconds
+        });
+        
+        async function checkSystemHealth() {
+            try {
+                const response = await fetch('/health');
+                if (response.ok) {
+                    const health = await response.json();
+                    updateSystemStatus(health);
+                } else {
+                    updateSystemStatus({ status: 'unhealthy', error: 'API unavailable' });
+                }
+            } catch (error) {
+                updateSystemStatus({ status: 'unhealthy', error: error.message });
+            }
+        }
+        
+        function updateSystemStatus(health) {
+            const statusEl = document.getElementById('systemStatus');
+            
+            if (health.status === 'healthy') {
+                const aiProviders = Object.keys(health.ai_providers || {}).join(', ');
+                statusEl.innerHTML = `
+                    <div class="pulse">🟢</div>
+                    <span>System: <strong>Healthy</strong> | AI: <strong>${aiProviders || 'Template'}</strong> | 
+                    Success: <strong>${(health.performance?.success_rate * 100 || 0).toFixed(1)}%</strong></span>
+                `;
+                statusEl.style.borderColor = '#9ae6b4';
+            } else {
+                statusEl.innerHTML = `
+                    <div class="pulse">🔴</div>
+                    <span>System: <strong>Issues</strong> | <strong>${health.error || 'Unknown error'}</strong></span>
+                `;
+                statusEl.style.borderColor = '#feb2b2';
+            }
+        }
+    </script>
+</body>
+</html>
