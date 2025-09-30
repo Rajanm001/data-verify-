@@ -19,7 +19,7 @@ class DocumentStorage:
             os.makedirs(self.storage_dir)
     
     async def store_document(self, name: str, original_text: str, redacted_text: str, 
-                           type_hint: Optional[str] = None, request_id: str = None) -> str:
+                           type_hint: Optional[str] = None, request_id: Optional[str] = None) -> str:
         """
         Store document with both original (for processing) and redacted (for storage) versions
         Returns document ID
