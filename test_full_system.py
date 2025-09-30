@@ -112,7 +112,9 @@ async def test_full_gsa_system():
         print("\nStep 3: Generating AI-powered analysis...")
         # Convert to serializable format first
         serializable_results = convert_to_json_serializable(extraction_results)
-        ai_content, ai_metadata = await ai_service.generate_negotiation_brief(serializable_results, checklist_items)
+        # Cast to proper type for AI service
+        analysis_dict = dict(serializable_results) if isinstance(serializable_results, dict) else {}
+        ai_content, ai_metadata = await ai_service.generate_negotiation_brief(analysis_dict, checklist_items)
         print(f"  ✓ AI analysis generated: {len(ai_content)} characters")
         print(f"  ✓ Provider used: {ai_metadata.get('provider', 'unknown')}")
         

@@ -10,13 +10,13 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 class DocumentStorage:
-    def __init__(self, storage_dir: str = "storage"):
-        self.storage_dir = storage_dir
+    def __init__(self, storage_dir: Optional[str] = None):
+        self.storage_dir = storage_dir or "document_storage"
         self.documents_db = {}  # In-memory for demo, use proper DB in production
         
         # Create storage directory if it doesn't exist
-        if not os.path.exists(storage_dir):
-            os.makedirs(storage_dir)
+        if not os.path.exists(self.storage_dir):
+            os.makedirs(self.storage_dir)
     
     async def store_document(self, name: str, original_text: str, redacted_text: str, 
                            type_hint: Optional[str] = None, request_id: str = None) -> str:
