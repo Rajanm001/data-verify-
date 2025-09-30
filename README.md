@@ -43,10 +43,51 @@ echo "OPENAI_API_KEY=your_key_here" > .env
 echo "GROQ_API_KEY=your_key_here" >> .env
 ```
 
-### Access Points
-- 🌐 **Web Interface**: http://127.0.0.1:8001
-- 📚 **API Documentation**: http://127.0.0.1:8001/docs
-- ❤️ **Health Check**: http://127.0.0.1:8001/health
+### Access Points (After Local Setup)
+- 🌐 **Web Interface**: `http://127.0.0.1:8001` (runs locally after setup)
+- 📚 **API Documentation**: `http://127.0.0.1:8001/docs` (interactive API docs)
+- ❤️ **Health Check**: `http://127.0.0.1:8001/health` (system status)
+
+---
+
+## 🖥️ Live Demo & Screenshots
+
+### System Interface Preview
+```
+🎯 GetGSA System Dashboard
+┌─────────────────────────────────────────────────────────────┐
+│ 📁 Upload Documents    🔍 Analyze    📊 Results           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  📄 Document Upload Area                                   │
+│     • Drag & drop PDF/DOCX/TXT files                      │
+│     • Or click to select files                            │
+│                                                             │
+│  🤖 AI Processing Status                                   │
+│     ✅ Classification Complete                             │
+│     ✅ Field Extraction Complete                          │
+│     ✅ RAG Analysis Complete                              │
+│     ✅ PII Redaction Applied                              │
+│                                                             │
+│  📊 Results Dashboard                                      │
+│     • Extracted Fields (UEI, DUNS, NAICS)                │
+│     • Compliance Checklist with Rule Citations           │
+│     • AI-Generated Negotiation Brief                     │
+│     • Professional Client Email Draft                    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Quick Start Commands
+```bash
+# Clone and run locally
+git clone https://github.com/Rajanm001/data-verify-.git
+cd data-verify-
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python start_getgsa.py
+```
 
 ---
 
@@ -93,44 +134,54 @@ echo "GROQ_API_KEY=your_key_here" >> .env
 
 ---
 
-## 📋 API Endpoints
+## � API Documentation
 
-### Core Endpoints
-- `POST /ingest` - Document ingestion with PII redaction
-- `POST /analyze` - Comprehensive analysis with AI classification
-- `GET /healthz` - System health monitoring
+### REST API Endpoints
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/ingest` | POST | Upload and process documents with PII redaction |
+| `/analyze` | POST | Run comprehensive AI analysis and compliance check |
+| `/healthz` | GET | System health and status monitoring |
 
-### Sample Request
-```json
-POST /ingest
-{
-  "documents": [
-    {
+### Example API Usage
+
+#### Document Upload
+```bash
+curl -X POST "http://localhost:8001/ingest" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "documents": [{
       "name": "company_profile.txt",
-      "type_hint": "profile",
-      "text": "Acme Corp\nUEI: ABC123DEF456\nDUNS: 123456789..."
-    }
+      "type_hint": "profile", 
+      "text": "Acme Corp\nUEI: ABC123DEF456\nDUNS: 123456789\nNAICS: 541511"
+    }]
+  }'
+```
+
+#### Analysis Response
+```json
+{
+  "request_id": "uuid-12345",
+  "parsed": {
+    "uei": "ABC123DEF456",
+    "duns": "123456789", 
+    "classification": "profile",
+    "naics_codes": ["541511"]
+  },
+  "checklist": {
+    "required_ok": true,
+    "problems": [],
+    "compliance_score": 95
+  },
+  "brief": "Strong compliance profile with all required fields...",
+  "client_email": "Thank you for your submission. All required...",
+  "citations": [
+    {"rule_id": "R1", "evidence": "UEI and DUNS validation passed"}
   ]
 }
 ```
 
-### Sample Response
-```json
-{
-  "parsed": {
-    "uei": "ABC123DEF456",
-    "duns": "123456789",
-    "classification": "profile"
-  },
-  "checklist": {
-    "required_ok": true,
-    "problems": []
-  },
-  "brief": "Professional negotiation analysis...",
-  "client_email": "Professional email draft...",
-  "citations": [{"rule_id": "R1", "evidence": "..."}]
-}
-```
+**📚 Interactive API Docs**: Available at `/docs` when running locally
 
 ---
 
