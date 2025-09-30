@@ -67,8 +67,11 @@ class Citation(BaseModel):
 
 class AnalyzeResponse(BaseModel):
     parsed: Dict[str, Any]
-    checklist: List[ChecklistItem]
+    checklist: List[Dict[str, Any]]  # Serialized ChecklistItem objects
     brief: str
     client_email: str
-    citations: List[Citation]
+    citations: List[Dict[str, Any]]  # Serialized Citation objects
     request_id: str
+    documents_analyzed: int
+    compliance_status: str
+    enterprise_metadata: Optional[Dict[str, Any]] = None

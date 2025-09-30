@@ -12,25 +12,26 @@ class DocumentProcessor:
     def __init__(self):
         self.classification_patterns = {
             "company_profile": [
-                r'uei[:\s]+([a-zA-Z0-9]{12})',
-                r'duns[:\s]+(\d{9})',
-                r'naics[:\s]+',
-                r'sam\.gov',
-                r'address[:\s]+',
-                r'poc[:\s]+|primary contact'
+                r'uei[:\s\(]*(?:unique entity identifier[:\s]*)?([a-zA-Z0-9]{12})',
+                r'duns[:\s\(]*(?:number[:\s]*)?([0-9]{9})',
+                r'naics[:\s]*(?:code[:\s]*)?([0-9]{6})',
+                r'sam[\s\.]*(?:gov|registration)',
+                r'(?:business\s+)?address[:\s]+',
+                r'(?:primary\s+)?contact[:\s]+|poc[:\s]+'
             ],
             "past_performance": [
-                r'customer[:\s]+',
-                r'contract[:\s]+',
-                r'value[:\s]+\$',
-                r'period[:\s]+',
-                r'contact[:\s]+.*@'
+                r'customer[:\s]+[a-zA-Z\s]+',
+                r'(?:contract|value)[:\s]+.*\$[0-9,]+',
+                r'period[:\s]+[0-9]{4}',
+                r'contact[:\s]+[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+                r'performance[:\s]+[a-zA-Z\s]+'
             ],
             "pricing": [
-                r'labor category',
-                r'rate[:\s]+',
-                r'hour|hourly',
-                r'senior developer|project manager|analyst'
+                r'labor\s+categor(?:y|ies)',
+                r'(?:rate|hour)[:\s]*\$[0-9]+',
+                r'(?:hourly|per\s+hour)',
+                r'(?:senior|junior)\s+(?:developer|analyst|manager)',
+                r'pricing[:\s]*(?:structure|information)'
             ]
         }
     
@@ -51,19 +52,25 @@ class DocumentProcessor:
             classification = await self._classify_document(doc)
             results["classifications"].append(classification)
             
-            # Extract fields based on classification
-            if not classification.abstained:
-                if classification.predicted_type == "company_profile":
-                    profile_data = self._extract_company_profile(doc.text)
-                    results["company_profile"].update(profile_data)
-                    
-                elif classification.predicted_type == "past_performance":
-                    pp_data = self._extract_past_performance(doc.text, doc.name)
-                    results["past_performance"].append(pp_data)
-                    
-                elif classification.predicted_type == "pricing":
-                    pricing_data = self._extract_pricing(doc.text)
-                    results["pricing"].extend(pricing_data)
+            # Extract ALL types of data from every document (not just classified type)
+            # This ensures we don't miss GSA compliance data regardless of classification
+            
+            # Always try to extract company profile data
+            profile_data = self._extract_company_profile(doc.text)
+            if profile_data:  # Only update if we found data
+                results["company_profile"].update(profile_data)
+            
+            # Always try to extract past performance data
+            pp_data = self._extract_past_performance(doc.text, doc.name)
+            if pp_data and pp_data.get("contracts"):  # Only add if we found contracts
+                results["past_performance"].extend(pp_data["contracts"])
+            elif pp_data:  # If we got data but in wrong format, handle it
+                results["past_performance"].append(pp_data)
+            
+            # Always try to extract pricing data
+            pricing_data = self._extract_pricing(doc.text)
+            if pricing_data:  # Only extend if we found pricing data
+                results["pricing"].extend(pricing_data)
         
         return results
     
@@ -132,47 +139,96 @@ class DocumentProcessor:
         )
     
     def _extract_company_profile(self, text: str) -> Dict[str, Any]:
-        """Extract company profile information"""
+        """Extract company profile information with enhanced GSA compliance detection"""
         profile = {}
         
-        # Extract UEI
-        uei_match = re.search(r'uei[:\s]+([a-zA-Z0-9]{12})', text, re.IGNORECASE)
-        if uei_match:
-            profile["uei"] = uei_match.group(1)
+        # Extract UEI - Enhanced patterns
+        uei_patterns = [
+            r'uei[:\s]*(?:\(unique entity identifier\)[:\s]*)?([a-zA-Z0-9]{12})',
+            r'uei[:\s]*(?:unique entity identifier[:\s]*)?([a-zA-Z0-9]{12})',
+            r'unique\s+entity\s+identifier[:\s]*([a-zA-Z0-9]{12})',
+            r'uei\s*\([^)]*\)[:\s]*([a-zA-Z0-9]{12})'
+        ]
+        for pattern in uei_patterns:
+            uei_match = re.search(pattern, text, re.IGNORECASE)
+            if uei_match:
+                profile["uei"] = uei_match.group(1)
+                break
         
-        # Extract DUNS
-        duns_match = re.search(r'duns[:\s]+(\d{9})', text, re.IGNORECASE)
-        if duns_match:
-            profile["duns"] = duns_match.group(1)
+        # Extract DUNS - Enhanced patterns
+        duns_patterns = [
+            r'duns[:\s]*(?:number[:\s]*)?([0-9]{9})',
+            r'duns\s+number[:\s]*([0-9]{9})'
+        ]
+        for pattern in duns_patterns:
+            duns_match = re.search(pattern, text, re.IGNORECASE)
+            if duns_match:
+                profile["duns"] = duns_match.group(1)
+                break
         
-        # Extract SAM status
-        if re.search(r'sam\.gov[:\s]+registered', text, re.IGNORECASE):
-            profile["sam_status"] = "registered"
-        elif re.search(r'sam\.gov', text, re.IGNORECASE):
-            profile["sam_status"] = "unknown"
+        # Extract SAM status - Enhanced patterns
+        sam_patterns = [
+            r'sam[:\s]*(?:registration[:\s]*)?(?:status[:\s]*)?(active|inactive)',
+            r'sam\.gov[:\s]*(?:status[:\s]*)?(active|inactive)',
+            r'registration[:\s]*(?:status[:\s]*)?(active|inactive)'
+        ]
+        for pattern in sam_patterns:
+            sam_match = re.search(pattern, text, re.IGNORECASE)
+            if sam_match:
+                profile["sam_status"] = sam_match.group(1).lower()
+                break
         
-        # Extract NAICS codes
-        naics_matches = re.findall(r'\b(\d{6})\b', text)
-        if naics_matches:
-            profile["naics"] = [int(code) for code in naics_matches if code.startswith(('5', '4'))]
+        # Extract NAICS codes - Enhanced patterns
+        naics_patterns = [
+            r'naics[:\s]*(?:code[:\s]*)?([0-9]{6})',
+            r'primary\s+naics[:\s]*(?:code[:\s]*)?([0-9]{6})',
+            r'naics\s+code[:\s]*([0-9]{6})'
+        ]
+        naics_codes = []
+        for pattern in naics_patterns:
+            naics_matches = re.findall(pattern, text, re.IGNORECASE)
+            naics_codes.extend(naics_matches)
         
-        # Extract contact information
+        if naics_codes:
+            profile["naics"] = list(set(naics_codes))  # Remove duplicates
+        
+        # Extract contact information - Enhanced patterns
         contact = {}
         
         # Extract name (after POC: or Contact:)
-        name_match = re.search(r'(?:poc|primary contact|contact)[:\s]+([^,\n]+)', text, re.IGNORECASE)
-        if name_match:
-            contact["name"] = name_match.group(1).strip()
+        name_patterns = [
+            r'(?:primary\s+)?(?:poc|contact)[:\s]+([^,\n\r]+)',
+            r'primary\s+contact[:\s]+([^,\n\r]+)'
+        ]
+        for pattern in name_patterns:
+            name_match = re.search(pattern, text, re.IGNORECASE)
+            if name_match:
+                contact["name"] = name_match.group(1).strip()
+                break
         
-        # Extract email
-        email_match = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', text)
-        if email_match:
-            contact["email"] = email_match.group(1)
+        # Extract email - Enhanced patterns
+        email_patterns = [
+            r'(?:primary\s+)?(?:contact\s+)?email[:\s]*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})',
+            r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'
+        ]
+        for pattern in email_patterns:
+            email_match = re.search(pattern, text, re.IGNORECASE)
+            if email_match:
+                contact["email"] = email_match.group(1)
+                break
         
-        # Extract phone
-        phone_match = re.search(r'(\(\d{3}\)\s*\d{3}-\d{4}|\d{3}-\d{3}-\d{4}|\(\d{3}\)\s*\d{3}\s*\d{4})', text)
-        if phone_match:
-            contact["phone"] = phone_match.group(1)
+        # Extract phone - Enhanced patterns
+        phone_patterns = [
+            r'(?:primary\s+)?(?:contact\s+)?phone[:\s]*(\([0-9]{3}\)\s*[0-9]{3}[-\s]?[0-9]{4})',
+            r'(?:primary\s+)?(?:contact\s+)?phone[:\s]*([0-9]{3}[-\s][0-9]{3}[-\s][0-9]{4})',
+            r'(\([0-9]{3}\)\s*[0-9]{3}[-\s]?[0-9]{4})',
+            r'([0-9]{3}[-\s][0-9]{3}[-\s][0-9]{4})'
+        ]
+        for pattern in phone_patterns:
+            phone_match = re.search(pattern, text, re.IGNORECASE)
+            if phone_match:
+                contact["phone"] = phone_match.group(1)
+                break
         
         if contact:
             profile["contact"] = contact
@@ -223,36 +279,56 @@ class DocumentProcessor:
         """Extract pricing information"""
         pricing_items = []
         
-        # Look for tabular data
-        lines = text.split('\n')
+        # Pattern 1: Look for line-by-line format (- Category: $rate/unit)
+        line_patterns = [
+            r'-\s*([^:]+):\s*\$?(\d+(?:\.\d+)?)\s*/?(.+)',
+            r'•\s*([^:]+):\s*\$?(\d+(?:\.\d+)?)\s*/?(.+)',
+            r'\*\s*([^:]+):\s*\$?(\d+(?:\.\d+)?)\s*/?(.+)'
+        ]
         
-        # Find header line
-        header_line = None
-        data_start = 0
+        for pattern in line_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            for match in matches:
+                category, rate, unit = match
+                pricing_items.append({
+                    "category": category.strip(),
+                    "rate": float(rate),
+                    "unit": unit.strip()
+                })
         
-        for i, line in enumerate(lines):
-            if 'labor category' in line.lower() or 'rate' in line.lower():
-                header_line = line
-                data_start = i + 1
-                break
-        
-        if header_line:
-            # Parse data lines
-            for line in lines[data_start:]:
-                line = line.strip()
-                if not line:
-                    continue
-                
-                # Split by comma or multiple spaces
-                parts = re.split(r',|\s{2,}', line)
-                
-                if len(parts) >= 3:
-                    item = {
-                        "category": parts[0].strip(),
-                        "rate": self._parse_numeric(parts[1].strip()),
-                        "unit": parts[2].strip()
-                    }
-                    pricing_items.append(item)
+        # Pattern 2: Look for tabular data
+        if not pricing_items:
+            lines = text.split('\n')
+            
+            # Find header line
+            header_line = None
+            data_start = 0
+            
+            for i, line in enumerate(lines):
+                if 'labor category' in line.lower() or 'rate' in line.lower():
+                    header_line = line
+                    data_start = i + 1
+                    break
+            
+            if header_line:
+                # Parse data lines
+                for line in lines[data_start:]:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    
+                    # Split by comma or multiple spaces
+                    parts = re.split(r',|\s{2,}', line)
+                    
+                    if len(parts) >= 2:
+                        rate_val = self._parse_numeric(parts[1].strip())
+                        if rate_val:
+                            item = {
+                                "category": parts[0].strip(),
+                                "rate": rate_val,
+                                "unit": parts[2].strip() if len(parts) > 2 else "hour"
+                            }
+                            pricing_items.append(item)
         
         return pricing_items
     

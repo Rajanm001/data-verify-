@@ -216,7 +216,7 @@ Employees: 250+""",
         print("🧠 Testing RAG System...")
         
         rag = RAGSystem()
-        await rag.initialize()
+        # RAG system initializes automatically now
         
         # Test rule retrieval accuracy
         test_queries = [
@@ -292,7 +292,7 @@ Employees: 250+""",
         print("📋 Testing Client Requirement 1: Missing UEI Detection...")
         
         rag = RAGSystem()
-        await rag.initialize()
+        # RAG system initializes automatically now
         
         analysis_results = {
             "company_profile": {
@@ -318,7 +318,7 @@ Employees: 250+""",
         print("📋 Testing Client Requirement 2: Past Performance Threshold...")
         
         rag = RAGSystem()
-        await rag.initialize()
+        # RAG system initializes automatically now
         
         analysis_results = {
             "past_performance": [
@@ -345,7 +345,7 @@ Employees: 250+""",
         print("📋 Testing Client Requirement 3: NAICS SIN Mapping...")
         
         rag = RAGSystem()
-        await rag.initialize()
+        # RAG system initializes automatically now
         
         analysis_results = {
             "company_profile": {
@@ -399,7 +399,7 @@ Employees: 250+""",
         print("📋 Testing Client Requirement 5: RAG Sanity Test...")
         
         rag = RAGSystem()
-        await rag.initialize()
+        # RAG system initializes automatically now
         
         # Remove R1 rule
         rag.remove_rule("R1")
@@ -566,7 +566,7 @@ SAM.gov: registered""",
             # Initialize all components
             processor = DocumentProcessor()
             rag = RAGSystem()
-            await rag.initialize()
+            # RAG system initializes automatically now
             ai_service = EnterpriseAIService()
             redactor = PIIRedactor()
             

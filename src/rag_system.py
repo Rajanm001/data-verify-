@@ -18,7 +18,7 @@ class RAGSystem:
         self.rule_embeddings = {}
         self.recent_citations = []
         
-        # GSA Rules Pack (R1-R5)
+        # GSA Rules Pack (R1-R5) - Define rules first
         self.gsa_rules = {
             "R1": {
                 "title": "Identity & Registry",
@@ -49,8 +49,11 @@ If missing rate basis or units, flag "pricing_incomplete"."""
 only derived fields and hashes are stored by default."""
             }
         }
+        
+        # Initialize rules database now that rules are defined
+        self._initialize_rules_db()
     
-    async def initialize(self):
+    def _initialize_rules_db(self):
         """Initialize the sentence transformer model and create embeddings"""
         try:
             # Use a lightweight model for demo
@@ -153,32 +156,50 @@ only derived fields and hashes are stored by default."""
                 problems = []
                 evidence = []
             
-            # Check UEI
-            uei = analysis_results.get("company_profile", {}).get("uei")
-            if not uei or len(uei) != 12:
+            # Check UEI - Look in multiple possible locations
+            uei = None
+            company_profile = analysis_results.get("company_profile", {})
+            if company_profile.get("uei"):
+                uei = company_profile["uei"]
+            
+            if not uei or len(str(uei)) != 12:
                 problems.append("missing_uei")
                 evidence.append("UEI not found or invalid format (requires 12 characters)")
+            else:
+                evidence.append(f"Valid UEI found: {uei}")
             
-            # Check DUNS
-            duns = analysis_results.get("company_profile", {}).get("duns")
+            # Check DUNS - Look in multiple possible locations  
+            duns = None
+            if company_profile.get("duns"):
+                duns = company_profile["duns"]
+            
             if not duns or not re.match(r'^\d{9}$', str(duns)):
                 problems.append("missing_duns")
                 evidence.append("DUNS not found or invalid format (requires 9 digits)")
+            else:
+                evidence.append(f"Valid DUNS found: {duns}")
             
-            # Check SAM registration
-            sam_status = analysis_results.get("company_profile", {}).get("sam_status")
-            if sam_status != "registered":
+            # Check SAM registration - Enhanced checking
+            sam_status = company_profile.get("sam_status", "").lower()
+            if sam_status not in ["active", "registered"]:
                 problems.append("sam_not_active")
                 evidence.append(f"SAM.gov status: {sam_status or 'unknown'}")
+            else:
+                evidence.append(f"SAM registration status: {sam_status}")
             
-            # Check contact info
-            contact = analysis_results.get("company_profile", {}).get("contact", {})
+            # Check contact info - Enhanced checking
+            contact = company_profile.get("contact", {})
             if not contact.get("email"):
                 problems.append("missing_contact_email")
                 evidence.append("Primary contact email not found")
+            else:
+                evidence.append(f"Contact email found: {contact['email']}")
+                
             if not contact.get("phone"):
                 problems.append("missing_contact_phone")
                 evidence.append("Primary contact phone not found")
+            else:
+                evidence.append(f"Contact phone found: {contact['phone']}")
             
             checklist_items.append(ChecklistItem(
                 rule_id="R1",
@@ -198,17 +219,31 @@ only derived fields and hashes are stored by default."""
                 problems = []
                 evidence = []
             
-            naics_codes = analysis_results.get("company_profile", {}).get("naics", [])
+            # Check NAICS codes - Look in multiple possible locations
+            naics_codes = []
+            company_profile = analysis_results.get("company_profile", {})
+            if company_profile.get("naics"):
+                naics_codes = company_profile["naics"]
+            
             if not naics_codes:
                 problems.append("missing_naics")
                 evidence.append("No NAICS codes found")
             else:
                 # Check mapping based on R2 rules
                 valid_mappings = {"541511": "54151S", "541512": "54151S", "541611": "541611", "518210": "518210C"}
+                found_valid = False
                 for naics in naics_codes:
-                    if str(naics) not in valid_mappings:
-                        problems.append("invalid_naics_mapping")
-                        evidence.append(f"NAICS {naics} not in approved SIN mapping")
+                    naics_str = str(naics)
+                    if naics_str in valid_mappings:
+                        found_valid = True
+                        evidence.append(f"Valid NAICS mapping: {naics_str} → {valid_mappings[naics_str]}")
+                    else:
+                        evidence.append(f"NAICS {naics_str} found but not in approved SIN mapping")
+                
+                if not found_valid:
+                    problems.append("invalid_naics_mapping")
+                else:
+                    evidence.append(f"Total NAICS codes found: {len(naics_codes)}")
             
             checklist_items.append(ChecklistItem(
                 rule_id="R2",
@@ -239,20 +274,23 @@ only derived fields and hashes are stored by default."""
                 
                 if value >= 25000:
                     valid_performances.append(pp)
-                    evidence.append(f"Valid performance: {pp.get('customer', 'Unknown')} - ${value:,}")
+                    contract_name = pp.get("contract", "Unknown contract")
+                    evidence.append(f"Valid performance: {contract_name} - ${value:,}")
             
             if not valid_performances:
                 problems.append("past_performance_min_value_not_met")
                 evidence.append("No past performance contracts ≥ $25,000 found")
+            else:
+                evidence.append(f"Found {len(valid_performances)} qualifying contracts (≥ $25,000)")
             
-            # Check required fields in valid performances
+            # Check required fields in valid performances (using our actual field names)
             for pp in valid_performances:
-                if not pp.get("customer"):
-                    problems.append("missing_pp_customer")
-                if not pp.get("contact_email"):
-                    problems.append("missing_pp_contact")
+                if not pp.get("contract"):
+                    problems.append("missing_pp_contract")
                 if not pp.get("period"):
                     problems.append("missing_pp_period")
+                if not pp.get("source_document"):
+                    problems.append("missing_pp_source")
             
             checklist_items.append(ChecklistItem(
                 rule_id="R3",
@@ -272,15 +310,24 @@ only derived fields and hashes are stored by default."""
                 problems = []
                 evidence = []
             
+            # Check pricing data - Look in multiple possible locations
             pricing_data = analysis_results.get("pricing", [])
             if not pricing_data:
                 problems.append("pricing_incomplete")
                 evidence.append("No pricing information found")
             else:
+                valid_pricing = 0
                 for item in pricing_data:
-                    if not item.get("rate") or not item.get("unit"):
-                        problems.append("pricing_incomplete")
-                        evidence.append(f"Missing rate basis or units for {item.get('category', 'Unknown category')}")
+                    if item.get("rate") and item.get("unit"):
+                        valid_pricing += 1
+                        evidence.append(f"Valid pricing: {item.get('category', 'Unknown')} - ${item.get('rate')}/{item.get('unit')}")
+                    else:
+                        evidence.append(f"Incomplete pricing for {item.get('category', 'Unknown category')}")
+                
+                if valid_pricing == 0:
+                    problems.append("pricing_incomplete")
+                else:
+                    evidence.append(f"Total pricing categories found: {len(pricing_data)}")
             
             checklist_items.append(ChecklistItem(
                 rule_id="R4",

@@ -100,7 +100,7 @@ class TestRAGSystem:
     @pytest.fixture
     async def rag_system(self):
         rag = RAGSystem()
-        await rag.initialize()
+        # RAG system initializes automatically now
         return rag
     
     @pytest.mark.asyncio
@@ -300,7 +300,7 @@ class TestIntegration:
         # Initialize components
         processor = DocumentProcessor()
         rag_system = RAGSystem()
-        await rag_system.initialize()
+        # RAG system initializes automatically now
         ai_service = AIService()
         ai_service.use_openai = False  # Use template mode
         redactor = PIIRedactor()
@@ -379,7 +379,7 @@ async def run_all_tests():
     # Test 1: Missing UEI detection
     print("\n📋 Test 1: Missing UEI detection")
     rag = RAGSystem()
-    await rag.initialize()
+    # RAG system initializes automatically now
     
     analysis_results = {"company_profile": {"duns": "123456789"}}  # Missing UEI
     checklist = await rag.generate_checklist(analysis_results)
@@ -428,7 +428,7 @@ async def run_all_tests():
     # Test 5: RAG sanity test
     print("\n📋 Test 5: RAG sanity test (rule removal)")
     rag_test = RAGSystem()
-    await rag_test.initialize()
+    # RAG system initializes automatically now
     rag_test.remove_rule("R1")
     
     analysis_results = {"company_profile": {"company_name": "Test"}}
