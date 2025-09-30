@@ -71,6 +71,8 @@ storage/*
 !storage/.gitkeep
 test_storage/*
 !test_storage/.gitkeep
+document_storage/*
+!document_storage/.gitkeep
 
 # Temporary files
 *.tmp
