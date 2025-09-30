@@ -107,7 +107,7 @@ class DocumentProcessor:
                 reason="No clear patterns detected - requires human review"
             )
         
-        best_type = max(scores, key=scores.get)
+        best_type = max(scores.keys(), key=lambda k: scores[k])
         confidence = scores[best_type]
         
         # Use type hint if provided and confidence is low
@@ -261,7 +261,7 @@ class DocumentProcessor:
         value_match = re.search(r'value[:\s]+\$([0-9,]+)', text, re.IGNORECASE)
         if value_match:
             value_str = value_match.group(1).replace(',', '')
-            pp["value"] = int(value_str)
+            pp["value"] = int(value_str)  # type: ignore[assignment]
         
         # Extract period
         period_match = re.search(r'period[:\s]+([^\n]+)', text, re.IGNORECASE)

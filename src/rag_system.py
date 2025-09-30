@@ -152,9 +152,10 @@ only derived fields and hashes are stored by default."""
             if r1_rules and r1_rules[0][0] == "R1":
                 rule_id, content, score = r1_rules[0]
                 self.recent_citations.append(Citation(rule_id=rule_id, chunk=content, relevance_score=score))
-                
-                problems = []
-                evidence = []
+            
+            # Initialize variables for R1 validation
+            problems = []
+            evidence = []
             
             # Check UEI - Look in multiple possible locations
             uei = None
@@ -215,9 +216,10 @@ only derived fields and hashes are stored by default."""
             if r2_rules and r2_rules[0][0] == "R2":
                 rule_id, content, score = r2_rules[0]
                 self.recent_citations.append(Citation(rule_id=rule_id, chunk=content, relevance_score=score))
-                
-                problems = []
-                evidence = []
+            
+            # Initialize variables for R2 validation
+            problems = []
+            evidence = []
             
             # Check NAICS codes - Look in multiple possible locations
             naics_codes = []
@@ -259,9 +261,10 @@ only derived fields and hashes are stored by default."""
             if r3_rules and r3_rules[0][0] == "R3":
                 rule_id, content, score = r3_rules[0]
                 self.recent_citations.append(Citation(rule_id=rule_id, chunk=content, relevance_score=score))
-                
-                problems = []
-                evidence = []
+            
+            # Initialize variables for R3 validation
+            problems = []
+            evidence = []
             
             past_performances = analysis_results.get("past_performance", [])
             valid_performances = []
@@ -303,6 +306,13 @@ only derived fields and hashes are stored by default."""
         # R4: Pricing & Catalog (only if rule exists)
         if "R4" in self.rules_db:
             r4_rules = self.retrieve_relevant_rules("pricing labor categories rates structured", 1)
+            if r4_rules and r4_rules[0][0] == "R4":
+                rule_id, content, score = r4_rules[0]
+                self.recent_citations.append(Citation(rule_id=rule_id, chunk=content, relevance_score=score))
+            
+            # Initialize variables for R4 validation
+            problems = []
+            evidence = []
             if r4_rules and r4_rules[0][0] == "R4":
                 rule_id, content, score = r4_rules[0]
                 self.recent_citations.append(Citation(rule_id=rule_id, chunk=content, relevance_score=score))

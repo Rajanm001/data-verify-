@@ -220,7 +220,7 @@ class AnalyzeRequest(BaseModel):
     generate_email: bool = True
 
 @app.post("/analyze", response_model=AnalyzeResponse)
-async def analyze_documents(request: AnalyzeRequest = None):
+async def analyze_documents(request: Optional[AnalyzeRequest] = None):
     """
     Analyze the last ingested documents or specific request
     """
@@ -275,8 +275,10 @@ async def analyze_documents(request: AnalyzeRequest = None):
             logger.info("🤖 Starting AI content generation...")
             logger.info("🔄 Using OpenAI GPT-4 with GROQ Llama3 fallback")
             
-            brief_task = ai_service.generate_negotiation_brief(serializable_analysis_results, checklist)
-            email_task = ai_service.generate_client_email(serializable_analysis_results, checklist)
+            # Cast to proper type for AI service (Dict[str, Any])
+            analysis_dict = dict(serializable_analysis_results) if isinstance(serializable_analysis_results, dict) else {}
+            brief_task = ai_service.generate_negotiation_brief(analysis_dict, checklist)
+            email_task = ai_service.generate_client_email(analysis_dict, checklist)
             
             # Execute AI generation concurrently for better performance
             (brief, brief_meta), (client_email, email_meta) = await asyncio.gather(
