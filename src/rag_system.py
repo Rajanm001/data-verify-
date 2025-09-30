@@ -95,11 +95,12 @@ only derived fields and hashes are stored by default."""
             query_embedding = self.model.encode([query])[0]
             similarities = []
             
+            import numpy as np
+            query_array = np.array([query_embedding])
+            
             for rule_id, rule_data in self.rules_db.items():
-                similarity = cosine_similarity(
-                    [query_embedding], 
-                    [rule_data["embedding"]]
-                )[0][0]
+                rule_array = np.array([rule_data["embedding"]])
+                similarity = cosine_similarity(query_array, rule_array)[0][0]
                 similarities.append((rule_id, rule_data["full_text"], float(similarity)))
             
             # Sort by similarity and return top_k

@@ -67,39 +67,40 @@ def main():
         server_ready = False
         initialization_complete = False
         
-        for line in iter(process.stdout.readline, ''):
-            print(line.rstrip())
-            
-            if "Uvicorn running on" in line:
-                server_ready = True
-                print(f"✅ Server is running at {url}")
-            
-            if "GetGSA system initialized successfully" in line:
-                initialization_complete = True
-                print("✅ GetGSA system fully initialized!")
+        if process.stdout is not None:
+            for line in iter(process.stdout.readline, ''):
+                print(line.rstrip())
                 
-            if "Application startup complete" in line and server_ready:
-                print("\n🎉 GetGSA System Ready!")
-                print("=" * 30)
-                print(f"🌐 Web Interface: {url}")
-                print("📋 Features Available:")
-                print("   • Document Upload & Analysis")
-                print("   • GSA Compliance Checking") 
-                print("   • AI-Powered Brief Generation")
-                print("   • Professional Email Creation")
-                print("   • Real-time Health Monitoring")
-                print("\n💡 The web interface should open automatically.")
-                print("   If not, manually navigate to:", url)
+                if "Uvicorn running on" in line:
+                    server_ready = True
+                    print(f"✅ Server is running at {url}")
                 
-                # Try to open browser
-                try:
-                    time.sleep(2)  # Give server a moment
-                    webbrowser.open(url)
-                    print("🌐 Browser opened automatically")
-                except Exception as e:
-                    print(f"⚠️  Could not open browser automatically: {e}")
-                
-                break
+                if "GetGSA system initialized successfully" in line:
+                    initialization_complete = True
+                    print("✅ GetGSA system fully initialized!")
+                    
+                if "Application startup complete" in line and server_ready:
+                    print("\n🎉 GetGSA System Ready!")
+                    print("=" * 30)
+                    print(f"🌐 Web Interface: {url}")
+                    print("📋 Features Available:")
+                    print("   • Document Upload & Analysis")
+                    print("   • GSA Compliance Checking") 
+                    print("   • AI-Powered Brief Generation")
+                    print("   • Professional Email Creation")
+                    print("   • Real-time Health Monitoring")
+                    print("\n💡 The web interface should open automatically.")
+                    print("   If not, manually navigate to:", url)
+                    
+                    # Try to open browser
+                    try:
+                        time.sleep(2)  # Give server a moment
+                        webbrowser.open(url)
+                        print("🌐 Browser opened automatically")
+                    except Exception as e:
+                        print(f"⚠️  Could not open browser automatically: {e}")
+                    
+                    break
         
         # Keep the process running
         try:

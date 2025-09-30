@@ -21,14 +21,20 @@ load_dotenv()
 try:
     from openai import OpenAI, AsyncOpenAI
     OPENAI_AVAILABLE = True
+    OpenAIType = OpenAI
+    AsyncOpenAIType = AsyncOpenAI
 except ImportError:
     OPENAI_AVAILABLE = False
+    OpenAIType = None  # type: ignore
+    AsyncOpenAIType = None  # type: ignore
 
 try:
     from groq import Groq
     GROQ_AVAILABLE = True
+    GroqType = Groq
 except ImportError:
     GROQ_AVAILABLE = False
+    GroqType = None  # type: ignore
 
 from src.models import ChecklistItem
 
@@ -77,9 +83,9 @@ class EnterpriseAIService:
     """🚀 Professional-grade AI service with multi-provider support, caching, and advanced metrics"""
     
     def __init__(self):
-        self.openai_client: Optional[OpenAI] = None
-        self.async_openai_client: Optional[AsyncOpenAI] = None
-        self.groq_client: Optional[Groq] = None
+        self.openai_client: Optional[Any] = None
+        self.async_openai_client: Optional[Any] = None
+        self.groq_client: Optional[Any] = None
         self.use_openai = False
         self.use_groq = False
         
@@ -97,12 +103,12 @@ class EnterpriseAIService:
         """Initialize AI providers with comprehensive error handling and validation"""
         
         # Priority 1: OpenAI (Premium quality)
-        if OPENAI_AVAILABLE:
+        if OPENAI_AVAILABLE and OpenAIType is not None and AsyncOpenAIType is not None:
             api_key = os.getenv("OPENAI_API_KEY")
             if api_key and self._validate_api_key(api_key, "openai"):
                 try:
-                    self.openai_client = OpenAI(api_key=api_key)
-                    self.async_openai_client = AsyncOpenAI(api_key=api_key)
+                    self.openai_client = OpenAIType(api_key=api_key)
+                    self.async_openai_client = AsyncOpenAIType(api_key=api_key)
                     self.use_openai = True
                     logger.info("🔥 OpenAI GPT-4 client initialized (Enterprise Primary)")
                 except Exception as e:
@@ -110,11 +116,11 @@ class EnterpriseAIService:
                     self.use_openai = False
         
         # Priority 2: GROQ (High-speed fallback)
-        if GROQ_AVAILABLE:
+        if GROQ_AVAILABLE and GroqType is not None:
             api_key = os.getenv("GROQ_API_KEY")
             if api_key and self._validate_api_key(api_key, "groq"):
                 try:
-                    self.groq_client = Groq(api_key=api_key)
+                    self.groq_client = GroqType(api_key=api_key)
                     self.use_groq = True
                     status = "Fallback" if self.use_openai else "Primary"
                     logger.info(f"⚡ GROQ Llama3 client initialized (High-Speed {status})")
@@ -365,6 +371,9 @@ Generate a comprehensive negotiation prep brief (2-3 paragraphs) that:
 Be professional, concise, and focus on actionable insights."""
 
         try:
+            if self.openai_client is None:
+                raise Exception("OpenAI client not initialized")
+            
             response = self.openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
@@ -374,7 +383,8 @@ Be professional, concise, and focus on actionable insights."""
                 max_tokens=500,
                 temperature=0.7
             )
-            return response.choices[0].message.content.strip()
+            content = response.choices[0].message.content
+            return content.strip() if content else ""
         except Exception as e:
             raise Exception(f"OpenAI API call failed: {e}")
     
@@ -397,6 +407,9 @@ Generate a professional, polite client email that:
 Keep it concise and actionable."""
 
         try:
+            if self.openai_client is None:
+                raise Exception("OpenAI client not initialized")
+            
             response = self.openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
@@ -406,7 +419,8 @@ Keep it concise and actionable."""
                 max_tokens=400,
                 temperature=0.5
             )
-            return response.choices[0].message.content.strip()
+            content = response.choices[0].message.content
+            return content.strip() if content else ""
         except Exception as e:
             raise Exception(f"OpenAI API call failed: {e}")
     
@@ -430,6 +444,9 @@ Generate a comprehensive negotiation prep brief (2-3 paragraphs) that:
 Be professional, concise, and focus on actionable insights."""
 
         try:
+            if self.groq_client is None:
+                raise Exception("GROQ client not initialized")
+            
             response = self.groq_client.chat.completions.create(
                 model="llama3-8b-8192",
                 messages=[
@@ -439,7 +456,8 @@ Be professional, concise, and focus on actionable insights."""
                 max_tokens=500,
                 temperature=0.7
             )
-            return response.choices[0].message.content.strip()
+            content = response.choices[0].message.content
+            return content.strip() if content else ""
         except Exception as e:
             raise Exception(f"GROQ API call failed: {e}")
     
@@ -462,6 +480,9 @@ Generate a professional, polite client email that:
 Keep it concise and actionable."""
 
         try:
+            if self.groq_client is None:
+                raise Exception("GROQ client not initialized")
+            
             response = self.groq_client.chat.completions.create(
                 model="llama3-8b-8192",
                 messages=[
@@ -471,7 +492,8 @@ Keep it concise and actionable."""
                 max_tokens=400,
                 temperature=0.5
             )
-            return response.choices[0].message.content.strip()
+            content = response.choices[0].message.content
+            return content.strip() if content else ""
         except Exception as e:
             raise Exception(f"GROQ API call failed: {e}")
     
@@ -698,8 +720,11 @@ GSA Contracting Team"""
         if self.use_openai:
             try:
                 # Quick test call
+                if self.async_openai_client is None:
+                    raise Exception("Async OpenAI client not initialized")
+                
                 test_response = await asyncio.wait_for(
-                    self.openai_client.chat.completions.create(
+                    self.async_openai_client.chat.completions.create(
                         model="gpt-3.5-turbo",
                         messages=[{"role": "user", "content": "Health check"}],
                         max_tokens=5
@@ -713,6 +738,9 @@ GSA Contracting Team"""
         # Test GROQ if available
         if self.use_groq:
             try:
+                if self.groq_client is None:
+                    raise Exception("GROQ client not initialized")
+                
                 test_response = await asyncio.wait_for(
                     asyncio.to_thread(
                         self.groq_client.chat.completions.create,

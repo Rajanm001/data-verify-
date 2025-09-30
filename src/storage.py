@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 
 class DocumentStorage:
     def __init__(self, storage_dir: Optional[str] = None):
-        self.storage_dir = storage_dir or "document_storage"
+        self.storage_dir = storage_dir if storage_dir is not None else "document_storage"
         self.documents_db = {}  # In-memory for demo, use proper DB in production
         
         # Create storage directory if it doesn't exist
